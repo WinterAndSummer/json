@@ -1,0 +1,90 @@
+json的结构
+struct array {
+    value **elems;      /* 想想: 这里如果定义为'value *elems'会怎样？ */
+    U32 count;
+};
+
+struct keyvalue {
+    char *key;
+    value *val;
+};
+
+struct object {
+    keyvalue *kvs;      //这是一个keyvalue的数组，可以通过realloc的方式扩充的动态数组
+    U32 count;          //数组kvs中有几个键值对
+};
+
+struct value {
+    json_e type;
+    union {
+        double num;
+        BOOL bol;
+        char *str;
+        array arr;
+        object obj;
+    };
+};
+
+api函数接口
+/**
+ * 在JSON值json(对象类型)中找到路径为path的成员，将其值修改为val
+ * @param json 对象类型的JSON值
+ * @param path 待修改成员的路径，如：basic.dns[1]
+ * @param val 新的值
+ * @return <0表示失败，否则表示成功
+ */
+int json_set(JSON *json, const char *path, JSON *val);
+/**
+ * 在JSON值json(对象类型)中找到路径为path的成员
+ * @param json 对象类型的JSON值
+ * @param path 待修改成员的路径，如：basic.dns[1]
+ * @return 路径path指示的成员值，不存在则返回NULL
+ */
+JSON *json_get(JSON *json, const char *path);
+
+JSON *json_new_num(double val);
+JSON *json_new_bool(BOOL val);
+JSON *json_new_str(const char *str);
+
+怎么构建一个json？
+采用方案3的来实现
+1.创建结构体
+2.分类处理
+//根据值来创建一个json，值分成5种类型
+int json_new_bool(JSON *json, bool val);
+int json_new_str(JSON *json, str *val);
+int json_new_int(JSON *json, int val);
+int json_new_double(JSON *json, double val);
+JSON *json = json_new(JSON_OBJ);
+
+json_set(json, "basic", json_new(JSON_OBJ));
+json_set(json, "basic.ip", json_new_str("200.200.3.61"));
+json_set(json, "basic.enable", json_new_bol(true));
+json_set(json, "basic.port", json_new_int(389));
+json_set(json, "basic.timeout", json_new_int(10));
+json_set(json, "basic.dns[0]", json_new_str("200.200.0.1"));
+json_set(json, "basic.dns[1]", json_new_str("200.0.0.254"));
+
+json_set(JSON *json, const char* key, JSON *val);
+
+3. 支持从JSON值中获取任意一个子孙成员的键值。
+JSON *basic = json_get_member(json, "basic");    //basic对应的对象
+JSON *dns = json_get_member(basic, "dns");       //dns对应的数组：["200.200.0.1", "200.0.0.254"]
+JSON *ip0 = json_get_element(dns, 0);            //数组中第0个IP地址："200.200.0.1"
+JSON *ip1 = json_get_element(dns, 1);            //数组中第1个IP地址："200.0.0.254"
+
+
+
+
+/*
+JSON *json = json_new(JSON_OBJ);
+JSON *basic = json_new(JSON_OBJ);
+JSON *dns = json_new(JSON_ARR);
+
+json_obj_set_value(json, basic);
+json_obj_set_bool(basic, "enable", true);
+json_obj_set_str(basic, "ip", "200.200.3.2");
+json_obj_set_value(basic, "dns", dns);
+
+json_arr_add_str(dns, "200.200.3.254");
+json_arr_add_str(dns, "200.200.1.1");
