@@ -1,0 +1,19 @@
+{
+    basic:{    
+        enable:true
+        port:389.000000
+        timeout:10.000000
+        basedn:aaa
+        fd:-1.000000
+        maxcnt:133333333333.000000
+        dns:[200.200.0.1,200.0.0.254,]
+        enable:true
+    }
+    advance:{    
+        dns:[200.200.0.1,200.0.0.254,]
+        portpool:[130.000000,131.000000,132.000000,]
+        url:http://200.200.0.4/main
+        url:/etc/sinfors
+        url:3.140000
+    }
+}

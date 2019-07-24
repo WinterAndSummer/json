@@ -118,16 +118,27 @@ int json_obj_set_str(JSON *json, const char *key, const char *val);
  * @details
  * 如果这个成员之前不存在，则新建一个键值对，如果存在，则修改该键值对
  */
-int json_obj_set_value(JSON *json, const char *key, JSON *val);
+int json_obj_set_value(JSON *json,  char *key, JSON *val);
+int json_obj_del_value(JSON *json,  char *key);
 
 int json_arr_add_num(JSON *json, double val);
 int json_arr_add_bool(JSON *json, BOOL val);
 int json_arr_add_str(JSON *json, const char *val);
 int json_arr_add_value(JSON *json, JSON *val);
 
+int json_arr_del_num(JSON *json, double val);
+int json_arr_del_bool(JSON *json, BOOL val);
+int json_arr_del_str(JSON *json, const char *val);
+int json_arr_del_value(JSON *json, JSON *val);
+
+
+//添加的api
+int json_print_value(JSON *json, const char* fname,int tab);
+
+
 /*
 JSON *json = json_new(JSON_OBJ);
-JSON *basic = json_new(JSON_OBJ);
+
 JSON *dns = json_new(JSON_ARR);
 
 json_obj_set_value(json, basic);
@@ -149,6 +160,7 @@ const char *json_get_str(const JSON *json, const char *def);
 JSON *json_new_num(double val);
 JSON *json_new_bool(BOOL val);
 JSON *json_new_str(const char *str);
+JSON *json_new_arr(JSON **elems,int count);
 
 //const JSON *json_get_member(const JSON *json, const char *key);
 //const JSON *json_get_element(const JSON *json, U32 idx);

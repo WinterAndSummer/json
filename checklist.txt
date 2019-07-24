@@ -1,0 +1,5 @@
+zbc:
+¹«Ë¾±àÂëchecklist£ºhttp://200.200.1.35/coding/checklist/html/checklist_C_C++.html
+
+zbc:
+http://200.200.1.35/coding/checklist/checklist_CAPI.html

@@ -73,9 +73,6 @@ JSON *dns = json_get_member(basic, "dns");       //dns对应的数组：["200.20
 JSON *ip0 = json_get_element(dns, 0);            //数组中第0个IP地址："200.200.0.1"
 JSON *ip1 = json_get_element(dns, 1);            //数组中第1个IP地址："200.0.0.254"
 
-
-
-
 /*
 JSON *json = json_new(JSON_OBJ);
 JSON *basic = json_new(JSON_OBJ);

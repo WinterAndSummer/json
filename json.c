@@ -2,12 +2,17 @@
 #include <assert.h>
 #include <malloc.h>
 #include <string.h>
+#include <errno.h>
 #include "json.h"
 
+#define MAX_KEY_LEN 100
 typedef struct array array;
 typedef struct object object;
 typedef struct value value;
 typedef struct keyvalue keyvalue;
+
+
+
 
 /**
  *  想想：这些结构体定义在.c是为什么？
@@ -64,6 +69,8 @@ const JSON *json_get_member(const JSON *json, const char *key)
     }
     return NULL;
 }
+    
+
 /**
  * 从数组类型的JSON值中获取第idx个元素(子JSON值)
  * @param json 数组类型的JSON值
@@ -94,17 +101,74 @@ JSON *json_new(json_e type)
     json->type = type;
     return json;
 }
+
+
+
 /**
  * 释放一个JSON值
  * @param json json值
  * @details
  * 该JSON值可能含子成员，也要一起释放
- */
+ */ 
+ void keyvalue_free(keyvalue* kvs, int count);
+ 
 void json_free(JSON *json)
 {
     //TODO:
-
+	if (!json)
+	{
+		return;
+	}
+	switch (json->type)
+	{
+	case JSON_NONE:
+        return;
+        break;
+	case JSON_BOL:
+        break;
+	case JSON_NUM:
+        break;
+	case JSON_STR:
+        if (json->str)
+        {
+            free(json->str);
+            json->str=NULL;
+        }
+        break;
+	case JSON_ARR:
+        for (int i=0;i<json->arr.count;i++)
+        {
+            json_free(json->arr.elems[i]);
+        }
+        break;
+	case JSON_OBJ:
+        keyvalue_free(json->obj.kvs, json->obj.count);
+        break;
+	}
+	free(json);
+	return ;
 }
+
+void keyvalue_free(keyvalue* kvs, int count)
+{
+	if (!kvs)
+	{
+		return;
+	}
+	for (int i=0; i<count; i++)
+	{
+		if (kvs->val)
+		{
+			json_free(kvs->val);
+		}
+	}
+	free(kvs);
+	kvs=NULL;
+	return;
+}
+
+
+
 /**
  * 获取JSON值json的类型
  * @param json json值
@@ -123,18 +187,134 @@ json_e json_type(const JSON *json)
  * @details
  * 如果这个成员之前不存在，则新建一个键值对，如果存在，则修改该键值对
  */
-int json_obj_set_value(JSON *json, const char *key, JSON *val)
+int json_obj_set_value(JSON *json, char *key, JSON *val)
 {
-    //TODO:
+    //检查输入
+	if (!json||!val)
+	{
+		goto failed_;
+	}
+	if (strlen(key)>MAX_KEY_LEN)
+	{
+		goto failed_;
+	}
+	if (!json->obj.kvs)
+	{
+		json->obj.kvs=(keyvalue*)malloc(sizeof(keyvalue));
+	}
+	else
+	{
+		json->obj.kvs=(keyvalue*)realloc(json->obj.kvs,sizeof(keyvalue)*(json->obj.count+1));
+	}
+	json->obj.kvs[json->obj.count].val=val;
+	json->obj.kvs[json->obj.count].key=key;
+	json->obj.count++; 
+	return 0;
+failed_:	
     return -1;
 }
+
+/**
+ * 删除JSON对象的成员值
+ * @param json 对象类型的JSON值
+ * @param key 键名
+ * @param val 值
+ * @details
+ * 如果这个成员之前不存在，则新建一个键值对，如果存在，则修改该键值对
+ */
+int json_obj_del_value(JSON *json,  char *key)
+{
+    assert(json);
+    assert(key);
+    if(json->type != JSON_OBJ){
+        fprintf(stderr, "del_value failed, json value is not JSON_OBJ");
+        return -1;
+    }
+    
+    int count = json->obj.count;
+    int index = 0;
+    for(index = 0;index < count; index++){
+        if(strcmp(json->obj.kvs[index].key, key) == 0){
+            break;
+        }
+    }
+    if(index == count){
+        fprintf(stderr, "del_value failed, can not find the key");
+        return -1;
+    }
+    for(int i = index; i < count-1; i++){
+        json->obj.kvs[i] = json->obj.kvs[i+1];
+    }
+    json->obj.count--;
+    return 0;
+}
+
+int json_arr_add_value(JSON *json, JSON* val)
+{
+    assert(json);
+    assert(val);
+    if(json->type != JSON_ARR){
+        fprintf(stderr, "add_value failed,val is not JSON_ARR");    
+        return -1;
+    }
+
+    json->arr.count++;
+    JSON **newelems = realloc(json->arr.elems, sizeof(JSON*)*(json->arr.count));
+    if(!newelems){
+        fprintf(stderr, "add_value failed,realloc failed");
+        return -1;
+    }
+    json->arr.elems = newelems;
+    json->arr.elems[json->arr.count-1] = val;
+    return 0;
+}
+
+int json_arr_del_value(JSON *json, JSON* val)
+{
+    assert(json);
+    assert(val);
+    if(json->type != JSON_ARR){
+        fprintf(stderr, "del_value failed,son is not JSON_ARR");
+        return -1;
+    }
+    int index = 0;
+    int count = json->arr.count;
+    if(count <= 1){
+        fprintf(stderr, "del_value failed,arr count <1");
+        return -1;
+    }
+    for(int index = 0; index < count; index++){
+        if(json->arr.elems[index] == val){
+           break;
+        }    
+    }
+    if(index == count){
+        fprintf(stderr, "del_value failed,can not find the value");
+        return -1;
+    }
+    json_free(json->arr.elems[index]);
+    for(int i = index; i < count-1; i++){
+        json->arr.elems[i] = json->arr.elems[i+1];
+    }
+    json->arr.elems[count-1] = NULL;
+    json->arr.count--;
+    return 0;    
+}
+
+
+
+
 /**
  * 新建一个BOOL类型的JSON值
  */
 JSON *json_new_bool(BOOL val)
 {
     //TODO:
-    return NULL;
+    JSON *json = json_new(JSON_BOL);
+    if (!json)
+        return json;
+	json->bol = val;
+    return json;
 }
 /**
  * 新建一个数字类型的JSON值
@@ -142,8 +322,11 @@ JSON *json_new_bool(BOOL val)
 JSON *json_new_num(double val)
 {
     //TODO:
-    return NULL;
-
+	JSON *json = json_new(JSON_NUM);
+    if (!json)
+        return json;
+	json->num = val;
+    return json;
 }
 /**
  * 新建一个字符串类型的JSON值
@@ -161,6 +344,8 @@ JSON *json_new_str(const char *str)
     }
     return json;
 }
+
+
 /**
  * 获取名字为key，类型为expect_type的子节点（JSON值）
  * @param json 对象类型的JSON值
@@ -224,4 +409,140 @@ const char *json_obj_get_str(const JSON *json, const char *key, const char *def)
     if (!child)
         return def;
     return child->str;    
+}
+
+int json_print_object(object *obj, const char* fname,int tab);
+int json_print_array(array *arr, const char* fname, int tab);
+int json_print_keyvalue(keyvalue *kvs, const char* fname, int tab);
+
+int json_print_value(JSON *json, const char* fname,int tab)
+{
+	if(!json){
+		goto failed_;
+	}
+    FILE *fp;
+    fp = fopen(fname, "a+");
+    if (!fp) {
+        fprintf(stderr, "open file [%s] failed, errno: %d\n"
+            , fname, errno);
+        return -1;
+    }
+    fseek(fp, 0, SEEK_END);
+	switch(json->type)
+	{
+		case JSON_BOL:
+			if(json->bol)
+			{
+                fprintf(fp,"true");
+			}
+			else
+			{
+                fprintf(fp,"false");
+			}
+			break;
+		case JSON_STR:
+            fprintf(fp,"%s",json->str);
+			break;
+		case JSON_NUM:
+			fprintf(fp,"%f",json->num);
+			break;
+		case JSON_OBJ:
+            fprintf(fp,"{");
+            fprintf(fp,"%*s",2*tab,"");
+            fclose(fp);
+			json_print_object(&(json->obj),fname, tab+1);
+            fp = fopen(fname, "a+");
+            fprintf(fp,"\n");
+            fprintf(fp,"%*s}",2*tab,"");
+			break;
+		case JSON_ARR:
+            fclose(fp);
+			json_print_array(&(json->arr), fname, tab+1);
+            fp = fopen(fname, "a+");
+			break;
+		case JSON_NONE:
+			break;
+		
+	}
+    fclose(fp);
+	return 0;
+failed_:
+	return -1;
+}
+int json_print_object(object *obj, const char* fname,int tab)
+{
+	if(!obj)
+	{
+		goto failed_;	
+	}
+    FILE *fp;
+    fp = fopen(fname, "a+");
+    if (!fp) {
+        fprintf(stderr, "open file [%s] failed, errno: %d\n"
+            , fname, errno);
+        return -1;
+    }
+    fseek(fp, 0, SEEK_END);
+	int count=obj->count;
+    fclose(fp);
+	for(int i=0;i<count;i++)
+	{
+        json_print_keyvalue(&(obj->kvs[i]), fname,tab+1);
+	}
+    fp = fopen(fname, "a+");
+    fseek(fp, 0, SEEK_END);
+    fclose(fp);
+    fp = NULL;
+	return 0;
+failed_:
+	return -1;
+}
+int json_print_array(array *arr, const char* fname,int tab)
+{
+	if(!arr)
+	{
+		goto failed_;	
+	}
+    FILE *fp;
+    fp = fopen(fname, "a+");
+    fseek(fp, 0, SEEK_END);
+    fprintf(fp,"[");
+	for(int i=0;i<arr->count;i++)
+	{
+		value* tmp=arr->elems[i];
+        fclose(fp);
+        json_print_value(tmp, fname, tab+1);
+        fp = fopen(fname, "a+");
+        fseek(fp, 0, SEEK_END);
+        fprintf(fp,",");
+	}
+    fprintf(fp,"]");
+    fclose(fp);
+	return 0;
+failed_:
+	return -1;
+	
+}
+int json_print_keyvalue(keyvalue *kvs, const char* fname, int tab)
+{
+    FILE *fp;
+    fp = fopen(fname, "a+");
+    if (!fp) {
+        fprintf(stderr, "open file [%s] failed, errno: %d\n"
+        , fname, errno);
+        return -1;
+    }
+    fseek(fp, 0, SEEK_END);
+	if(!kvs)
+	{
+		goto failed_;	
+	}
+    fprintf(fp,"\n");
+    fprintf(fp,"%*s",2*tab,"");
+    fprintf(fp,"%s:",kvs->key);
+    fclose(fp);
+    json_print_value(kvs->val, fname, tab);
+	return 0;
+failed_:
+	return -1;
 }
