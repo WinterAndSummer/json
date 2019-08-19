@@ -2,8 +2,9 @@
 #include "xtest.h"
 #include <stdio.h>
 
-//  完成使用场景的测试
-TEST(test, scene)
+//完成使用场景的测试
+//这是一个测试
+测试（测试，场景）
 {
     JSON *json = json_new(JSON_OBJ);
     ASSERT_TRUE(json != NULL);
